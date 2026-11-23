@@ -12,6 +12,7 @@ endif()
 
 add_library(EchoPairCore
     src/devices/audio_endpoint.cpp
+    src/devices/endpoint_change_watcher.cpp
     src/audio/wasapi_output.cpp
 )
 
@@ -20,6 +21,7 @@ target_compile_features(EchoPairCore PUBLIC cxx_std_20)
 target_compile_definitions(EchoPairCore PUBLIC
     UNICODE
     _UNICODE
+    NOMINMAX
     WINVER=0x0A00
     _WIN32_WINNT=0x0A00
 )

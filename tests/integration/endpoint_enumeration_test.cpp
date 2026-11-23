@@ -1,5 +1,7 @@
 #include <echopair/devices/audio_endpoint.h>
+#include <echopair/devices/endpoint_change_watcher.h>
 
+#include <chrono>
 #include <iostream>
 #include <set>
 #include <string>
@@ -7,6 +9,8 @@
 int main()
 {
     try {
+        echopair::devices::EndpointChangeWatcher watcher;
+        watcher.wait_for_change(std::chrono::milliseconds::zero());
         const auto endpoints = echopair::devices::enumerate_playback_endpoints();
         std::set<std::wstring> identifiers;
 

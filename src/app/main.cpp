@@ -7,6 +7,7 @@
 
 #include <echopair/audio/wasapi_output.h>
 #include <echopair/devices/audio_endpoint.h>
+#include <echopair/devices/endpoint_change_watcher.h>
 
 namespace {
 
@@ -28,6 +29,26 @@ const echopair::devices::AudioEndpoint& endpoint_at(
     return endpoint;
 }
 
+void print_endpoints(const std::vector<echopair::devices::AudioEndpoint>& endpoints)
+{
+    if (endpoints.empty()) {
+        std::wcout << L"No playback endpoints were returned by Windows Core Audio.\n";
+        return;
+    }
+
+    std::wcout << L"Windows playback endpoints:\n";
+    for (std::size_t index = 0; index < endpoints.size(); ++index) {
+        const auto& endpoint = endpoints[index];
+        std::wcout << L"  " << index + 1 << L". " << endpoint.name << L" ["
+                   << echopair::devices::endpoint_state_name(endpoint.state)
+                   << L"]";
+        if (endpoint.is_default_for_console) {
+            std::wcout << L" (default)";
+        }
+        std::wcout << L"\n";
+    }
+}
+
 }
 
 int wmain(int argc, wchar_t* argv[])
@@ -36,23 +57,23 @@ int wmain(int argc, wchar_t* argv[])
                << L" - One Sound. Multiple Ears.\n";
 
     try {
+        if (argc == 2 && std::wstring(argv[1]) == L"--watch") {
+            echopair::devices::EndpointChangeWatcher watcher;
+            while (true) {
+                print_endpoints(echopair::devices::enumerate_playback_endpoints());
+                std::wcout << L"Waiting for endpoint changes. Press Ctrl+C to exit.\n";
+                watcher.wait_for_change(std::chrono::milliseconds::max());
+                std::wcout << L"Endpoint change detected.\n";
+            }
+        }
+
         const auto endpoints = echopair::devices::enumerate_playback_endpoints();
         if (endpoints.empty()) {
             std::wcout << L"No playback endpoints were returned by Windows Core Audio.\n";
             return argc == 1 ? 0 : 1;
         }
 
-        std::wcout << L"Windows playback endpoints:\n";
-        for (std::size_t index = 0; index < endpoints.size(); ++index) {
-            const auto& endpoint = endpoints[index];
-            std::wcout << L"  " << index + 1 << L". " << endpoint.name << L" ["
-                       << echopair::devices::endpoint_state_name(endpoint.state)
-                       << L"]";
-            if (endpoint.is_default_for_console) {
-                std::wcout << L" (default)";
-            }
-            std::wcout << L"\n";
-        }
+        print_endpoints(endpoints);
 
         if (argc == 1) {
             return 0;
@@ -85,7 +106,7 @@ int wmain(int argc, wchar_t* argv[])
             return 0;
         }
 
-        std::wcerr << L"Usage: EchoPair.exe [--test-tone [endpoint-index [endpoint-index]]]\n";
+        std::wcerr << L"Usage: EchoPair.exe [--watch | --test-tone [endpoint-index [endpoint-index]]]\n";
         return 2;
     } catch (const std::exception& error) {
         std::cerr << "EchoPair operation failed: " << error.what() << '\n';

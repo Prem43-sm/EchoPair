@@ -10,7 +10,8 @@ The endpoint integration test calls Windows Core Audio and validates that
 returned endpoint identifiers are non-empty and unique and that each endpoint
 has a recognized state. It runs against the actual Windows machine; it does
 not use a fake device list. A machine with no playback endpoints may return an
-empty list.
+empty list. It also registers and unregisters a real Windows endpoint
+notification callback, but does not simulate a device change.
 
 The SPSC ring-buffer unit test covers wraparound and concurrent producer/
 consumer ordering without opening an audio device.

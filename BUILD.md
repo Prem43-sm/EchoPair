@@ -38,3 +38,11 @@ For one or two active endpoints, use the displayed list indexes, for example
 
 This command produces audible sound. It is not run by the automated build or
 test scripts.
+
+To monitor endpoint add/remove/state/default changes and refresh the list:
+
+```powershell
+.\build\Release\EchoPair.exe --watch
+```
+
+Exit watch mode with Ctrl+C.

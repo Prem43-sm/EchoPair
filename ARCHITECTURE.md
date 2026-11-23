@@ -11,9 +11,11 @@ The application can open shared-mode WASAPI render streams to up to two
 active endpoints and play an explicitly requested 440 Hz test tone. Each
 endpoint has an independent event-driven buffer, a preallocated SPSC PCM ring,
 and a render thread. Tone generation runs separately from the render thread.
-This diagnostic path is not system-audio capture or a synchronized
-multi-device route. The code does not classify devices as Bluetooth based on
-their names.
+An endpoint notification watcher can detect Windows endpoint state, add/remove,
+and default-device changes; the CLI's `--watch` mode re-enumerates after each
+notification. This diagnostic path is not system-audio capture or a
+synchronized multi-device route. The code does not classify devices as
+Bluetooth based on their names.
 
 ## System-wide source routing
 
