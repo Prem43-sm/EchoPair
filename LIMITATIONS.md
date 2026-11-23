@@ -1,10 +1,9 @@
 # Current limitations
 
-This is the initial project skeleton. It builds and launches, but it does not
-yet enumerate devices, capture system audio, render audio, synchronize
-endpoints, or install an audio driver. The application reports these
-limitations rather than simulating audio functionality.
+The application currently enumerates real Windows playback endpoints. It does
+not yet capture system audio, render audio, synchronize endpoints, or install
+an audio driver. Those capabilities are not simulated.
 
 The architecture for system-wide audio routing is not considered settled.
-Endpoint discovery and source routing will be evaluated and implemented in
-separate phases.
+Endpoint discovery alone does not provide a system-wide audio source or
+multi-device playback.

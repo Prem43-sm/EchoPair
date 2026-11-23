@@ -23,5 +23,6 @@ and runs the registered CTest checks. To run tests separately:
 
 The executable is written to `build\Release\EchoPair.exe`.
 
-This phase creates a buildable application shell only. Audio endpoint
-enumeration and playback are tracked as separate implementation phases.
+The current integration test uses the Windows Core Audio API on the machine
+where it runs. It checks endpoint metadata returned by Windows; it does not
+test playback or physical Bluetooth routing.

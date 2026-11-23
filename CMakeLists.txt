@@ -10,24 +10,40 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "EchoPair requires a 64-bit build.")
 endif()
 
-add_executable(EchoPair
-    src/app/main.cpp
+add_library(EchoPairCore
+    src/devices/audio_endpoint.cpp
 )
 
-target_compile_features(EchoPair PRIVATE cxx_std_20)
-target_compile_definitions(EchoPair PRIVATE
+target_include_directories(EchoPairCore PUBLIC include)
+target_compile_features(EchoPairCore PUBLIC cxx_std_20)
+target_compile_definitions(EchoPairCore PUBLIC
     UNICODE
     _UNICODE
-    ECHO_PAIR_VERSION="${PROJECT_VERSION}"
     WINVER=0x0A00
     _WIN32_WINNT=0x0A00
 )
 
+target_link_libraries(EchoPairCore PRIVATE ole32 propsys uuid)
+
+add_executable(EchoPair
+    src/app/main.cpp
+)
+target_link_libraries(EchoPair PRIVATE EchoPairCore)
+target_compile_definitions(EchoPair PRIVATE ECHO_PAIR_VERSION="${PROJECT_VERSION}")
+
 if(MSVC)
+    target_compile_options(EchoPairCore PRIVATE /W4 /permissive- /EHsc /utf-8)
     target_compile_options(EchoPair PRIVATE /W4 /permissive- /EHsc /utf-8)
 endif()
 
 include(CTest)
 if(BUILD_TESTING)
-    add_test(NAME EchoPair_launch_smoke COMMAND EchoPair)
+    add_executable(EchoPairEndpointTests
+        tests/integration/endpoint_enumeration_test.cpp
+    )
+    target_link_libraries(EchoPairEndpointTests PRIVATE EchoPairCore)
+    if(MSVC)
+        target_compile_options(EchoPairEndpointTests PRIVATE /W4 /permissive- /EHsc /utf-8)
+    endif()
+    add_test(NAME EchoPair_endpoint_enumeration COMMAND EchoPairEndpointTests)
 endif()

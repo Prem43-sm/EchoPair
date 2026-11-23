@@ -5,9 +5,10 @@
 EchoPair is a Windows application project for routing audio to multiple
 existing playback devices without replacing Windows Bluetooth drivers.
 
-The current build is an early development shell. It reports its product
-identity and explicitly marks audio routing as not implemented. No fake
-devices, playback, synchronization, or latency measurements are presented.
+The current build enumerates actual Windows playback endpoints using Core
+Audio. Audio capture, playback, multi-device routing, synchronization, and
+latency measurements are not implemented. No devices or measurements are
+simulated.
 
 ## Build
 
