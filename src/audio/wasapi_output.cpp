@@ -1,4 +1,5 @@
 #include <echopair/audio/wasapi_output.h>
+#include <echopair/audio/spsc_ring_buffer.h>
 
 #include "../platform/com_support.h"
 
@@ -9,6 +10,8 @@
 #include <audioclient.h>
 #include <wrl/client.h>
 
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -18,6 +21,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <span>
+#include <stop_token>
 #include <thread>
 #include <vector>
 
@@ -84,7 +89,7 @@ FormatInfo inspect_format(const WAVEFORMATEX& format)
         throw std::runtime_error("Endpoint uses an unsupported shared-mode audio format");
     }
 
-    if (format.nChannels == 0 || format.nSamplesPerSec == 0 ||
+    if (format.nChannels == 0 || format.nChannels > 32 || format.nSamplesPerSec == 0 ||
         format.wBitsPerSample == 0 || format.wBitsPerSample % 8 != 0 ||
         valid_bits == 0 || valid_bits > format.wBitsPerSample) {
         throw std::runtime_error("Endpoint returned invalid audio format dimensions");
@@ -140,7 +145,7 @@ void write_sample(BYTE* destination, double value, const FormatInfo& format)
     }
 }
 
-void fill_tone(
+void fill_initial_tone(
     BYTE* buffer,
     UINT32 frames,
     const FormatInfo& format,
@@ -160,6 +165,43 @@ void fill_tone(
         for (std::uint16_t channel = 0; channel < format.channels; ++channel) {
             write_sample(frame_data + static_cast<std::size_t>(channel) * bytes_per_sample,
                          value, format);
+        }
+    }
+}
+
+void produce_test_tone(
+    std::stop_token stop,
+    SpscRingBuffer<float>& samples,
+    const FormatInfo& format,
+    double phase)
+{
+    constexpr std::size_t max_block_samples = 512;
+    std::array<float, max_block_samples> block{};
+    const std::size_t block_frames = max_block_samples / format.channels;
+    const std::size_t block_size = block_frames * format.channels;
+    const double phase_increment = 2.0 * pi * tone_frequency_hz / format.sample_rate;
+    std::size_t pending_offset = block_size;
+
+    while (!stop.stop_requested()) {
+        if (pending_offset == block_size) {
+            for (std::size_t frame = 0; frame < block_frames; ++frame) {
+                const float value = static_cast<float>(tone_amplitude * std::sin(phase));
+                phase += phase_increment;
+                if (phase >= 2.0 * pi) {
+                    phase -= 2.0 * pi;
+                }
+                for (std::uint16_t channel = 0; channel < format.channels; ++channel) {
+                    block[frame * format.channels + channel] = value;
+                }
+            }
+            pending_offset = 0;
+        }
+
+        const auto written = samples.write(std::span<const float>(
+            block.data() + pending_offset, block_size - pending_offset));
+        pending_offset += written;
+        if (written == 0) {
+            std::this_thread::yield();
         }
     }
 }
@@ -200,7 +242,9 @@ void render_packet(
     IAudioRenderClient* render_client,
     UINT32 buffer_frames,
     const FormatInfo& format,
-    double& phase)
+    SpscRingBuffer<float>& samples,
+    std::vector<float>& conversion_buffer,
+    std::uint64_t& underrun_samples)
 {
     UINT32 padding = 0;
     check_hresult(audio_client->GetCurrentPadding(&padding),
@@ -217,7 +261,26 @@ void render_packet(
     BYTE* data = nullptr;
     check_hresult(render_client->GetBuffer(frames_available, &data),
                   "IAudioRenderClient::GetBuffer");
-    fill_tone(data, frames_available, format, phase);
+
+    const std::size_t sample_count =
+        static_cast<std::size_t>(frames_available) * format.channels;
+    const std::size_t samples_read = samples.read(
+        std::span<float>(conversion_buffer.data(), sample_count));
+    std::fill(conversion_buffer.begin() + samples_read,
+              conversion_buffer.begin() + sample_count, 0.0F);
+    underrun_samples += sample_count - samples_read;
+
+    const std::uint16_t bytes_per_sample = format.container_bits / 8;
+    for (UINT32 frame = 0; frame < frames_available; ++frame) {
+        BYTE* frame_data = data + static_cast<std::size_t>(frame) * format.block_alignment;
+        for (std::uint16_t channel = 0; channel < format.channels; ++channel) {
+            const std::size_t sample_index =
+                static_cast<std::size_t>(frame) * format.channels + channel;
+            write_sample(frame_data + static_cast<std::size_t>(channel) * bytes_per_sample,
+                         conversion_buffer[sample_index], format);
+        }
+    }
+
     check_hresult(render_client->ReleaseBuffer(frames_available, 0),
                   "IAudioRenderClient::ReleaseBuffer");
 }
@@ -286,11 +349,21 @@ void play_test_tone_on_endpoint(
     BYTE* initial_data = nullptr;
     check_hresult(render_client->GetBuffer(buffer_frames, &initial_data),
                   "IAudioRenderClient::GetBuffer(initial)");
-    fill_tone(initial_data, buffer_frames, format, phase);
+    fill_initial_tone(initial_data, buffer_frames, format, phase);
     check_hresult(render_client->ReleaseBuffer(buffer_frames, 0),
                   "IAudioRenderClient::ReleaseBuffer(initial)");
 
+    const std::size_t ring_capacity = std::max<std::size_t>(
+        512, static_cast<std::size_t>(format.sample_rate) * format.channels / 4);
+    SpscRingBuffer<float> samples(ring_capacity);
+    std::vector<float> conversion_buffer(
+        static_cast<std::size_t>(buffer_frames) * format.channels);
+    std::uint64_t underrun_samples = 0;
+
     AudioClientStart stream(audio_client.Get());
+    std::jthread producer([&](std::stop_token stop) {
+        produce_test_tone(stop, samples, format, phase);
+    });
     stream.start();
 
     const auto stop_time = std::chrono::steady_clock::now() + duration;
@@ -302,13 +375,19 @@ void play_test_tone_on_endpoint(
             throw std::runtime_error(message.str());
         }
         if (wait_result == WAIT_OBJECT_0) {
-            render_packet(audio_client.Get(), render_client.Get(), buffer_frames, format, phase);
+            render_packet(audio_client.Get(), render_client.Get(), buffer_frames, format,
+                          samples, conversion_buffer, underrun_samples);
         } else if (wait_result != WAIT_TIMEOUT) {
             throw std::runtime_error("Audio render event returned an unexpected wait result");
         }
     }
 
     stream.stop();
+    producer.request_stop();
+    producer.join();
+    if (underrun_samples != 0) {
+        throw std::runtime_error("The test-tone source underrun; playback was incomplete");
+    }
 }
 
 void play_test_tone_on_endpoints(

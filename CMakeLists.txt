@@ -56,4 +56,14 @@ if(BUILD_TESTING)
         target_compile_options(EchoPairAudioValidationTests PRIVATE /W4 /permissive- /EHsc /utf-8)
     endif()
     add_test(NAME EchoPair_audio_output_validation COMMAND EchoPairAudioValidationTests)
+
+    add_executable(EchoPairRingBufferTests
+        tests/unit/spsc_ring_buffer_test.cpp
+    )
+    target_include_directories(EchoPairRingBufferTests PRIVATE include)
+    target_compile_features(EchoPairRingBufferTests PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(EchoPairRingBufferTests PRIVATE /W4 /permissive- /EHsc /utf-8)
+    endif()
+    add_test(NAME EchoPair_spsc_ring_buffer COMMAND EchoPairRingBufferTests)
 endif()

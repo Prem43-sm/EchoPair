@@ -12,6 +12,9 @@ has a recognized state. It runs against the actual Windows machine; it does
 not use a fake device list. A machine with no playback endpoints may return an
 empty list.
 
+The SPSC ring-buffer unit test covers wraparound and concurrent producer/
+consumer ordering without opening an audio device.
+
 Playback, multiple-device routing, disconnect recovery, synchronization, and
 Bluetooth hardware tests are not implemented yet.
 
