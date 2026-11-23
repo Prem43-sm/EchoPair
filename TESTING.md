@@ -14,3 +14,7 @@ empty list.
 
 Playback, multiple-device routing, disconnect recovery, synchronization, and
 Bluetooth hardware tests are not implemented yet.
+
+An operator can manually validate single-endpoint playback by running
+`.\build\Release\EchoPair.exe --test-tone`. This produces audible sound for
+three seconds and is intentionally not invoked by automated tests.

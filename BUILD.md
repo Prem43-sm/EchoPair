@@ -26,3 +26,12 @@ The executable is written to `build\Release\EchoPair.exe`.
 The current integration test uses the Windows Core Audio API on the machine
 where it runs. It checks endpoint metadata returned by Windows; it does not
 test playback or physical Bluetooth routing.
+
+To deliberately play a three-second test tone on the Windows default endpoint:
+
+```powershell
+.\build\Release\EchoPair.exe --test-tone
+```
+
+This command produces audible sound. It is not run by the automated build or
+test scripts.

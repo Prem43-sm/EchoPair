@@ -7,8 +7,11 @@ enumerate playback endpoints. It retrieves each endpoint's Windows-provided
 identifier, friendly name, and state, and indicates the current console
 default endpoint when Windows provides one.
 
-No audio stream is opened or modified by this phase. The code does not classify
-devices as Bluetooth based on their names.
+The application can open a shared-mode WASAPI render stream to one active
+endpoint and play an explicitly requested 440 Hz test tone. It uses the
+endpoint's mix format and event-driven buffer notifications. This diagnostic
+path is not system-audio capture or multi-device routing. The code does not
+classify devices as Bluetooth based on their names.
 
 ## System-wide source routing
 
@@ -18,6 +21,10 @@ replace Windows' system output or prevent duplicate/feedback paths when
 rendering back to endpoints. A complete system-wide routing design must
 resolve that source path before audio rendering is claimed.
 
-No virtual endpoint or driver is included. The local environment has no
-detected WDK installation, and driver requirements, packaging, and signing
-must be evaluated before any driver work.
+System-wide routing will require a virtual render endpoint so Windows can
+deliver its shared system mix to EchoPair without routing the source back into
+the physical outputs. The Microsoft SysVAD sample documents a supported WDM
+audio-driver starting point; its sample driver is not itself an EchoPair
+fan-out engine. A custom device/driver path, package signing, and deployment
+remain separate work. The WDK is being installed for evaluation and build
+work only; Secure Boot and driver-signing settings will not be changed.

@@ -12,6 +12,7 @@ endif()
 
 add_library(EchoPairCore
     src/devices/audio_endpoint.cpp
+    src/audio/wasapi_output.cpp
 )
 
 target_include_directories(EchoPairCore PUBLIC include)
