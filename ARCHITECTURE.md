@@ -30,5 +30,6 @@ deliver its shared system mix to EchoPair without routing the source back into
 the physical outputs. The Microsoft SysVAD sample documents a supported WDM
 audio-driver starting point; its sample driver is not itself an EchoPair
 fan-out engine. A custom device/driver path, package signing, and deployment
-remain separate work. The WDK is being installed for evaluation and build
-work only; Secure Boot and driver-signing settings will not be changed.
+remain separate work. The WDK is installed for evaluation and build work only.
+Visual Studio driver-toolset integration remains to be verified.
+Secure Boot and driver-signing settings have not been changed.
