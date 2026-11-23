@@ -47,4 +47,13 @@ if(BUILD_TESTING)
         target_compile_options(EchoPairEndpointTests PRIVATE /W4 /permissive- /EHsc /utf-8)
     endif()
     add_test(NAME EchoPair_endpoint_enumeration COMMAND EchoPairEndpointTests)
+
+    add_executable(EchoPairAudioValidationTests
+        tests/unit/wasapi_output_validation_test.cpp
+    )
+    target_link_libraries(EchoPairAudioValidationTests PRIVATE EchoPairCore)
+    if(MSVC)
+        target_compile_options(EchoPairAudioValidationTests PRIVATE /W4 /permissive- /EHsc /utf-8)
+    endif()
+    add_test(NAME EchoPair_audio_output_validation COMMAND EchoPairAudioValidationTests)
 endif()

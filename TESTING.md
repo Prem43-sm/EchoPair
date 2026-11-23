@@ -15,6 +15,8 @@ empty list.
 Playback, multiple-device routing, disconnect recovery, synchronization, and
 Bluetooth hardware tests are not implemented yet.
 
-An operator can manually validate single-endpoint playback by running
-`.\build\Release\EchoPair.exe --test-tone`. This produces audible sound for
-three seconds and is intentionally not invoked by automated tests.
+An operator can manually validate one or two endpoint streams by running
+`.\build\Release\EchoPair.exe --test-tone` or selecting active endpoint
+indexes from the displayed list. This produces audible sound for three seconds
+and is intentionally not invoked by automated tests. Relative synchronization
+is not implemented or claimed.

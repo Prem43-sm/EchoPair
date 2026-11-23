@@ -1,10 +1,34 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <echopair/audio/wasapi_output.h>
 #include <echopair/devices/audio_endpoint.h>
+
+namespace {
+
+const echopair::devices::AudioEndpoint& endpoint_at(
+    const std::vector<echopair::devices::AudioEndpoint>& endpoints,
+    const wchar_t* argument)
+{
+    const std::wstring value(argument);
+    std::size_t parsed_characters = 0;
+    const auto index = std::stoul(value, &parsed_characters);
+    if (parsed_characters != value.size() || index == 0 || index > endpoints.size()) {
+        throw std::invalid_argument("Endpoint index is outside the displayed list");
+    }
+
+    const auto& endpoint = endpoints[index - 1];
+    if (endpoint.state != echopair::devices::EndpointState::active) {
+        throw std::invalid_argument("The selected endpoint is not active");
+    }
+    return endpoint;
+}
+
+}
 
 int wmain(int argc, wchar_t* argv[])
 {
@@ -19,8 +43,9 @@ int wmain(int argc, wchar_t* argv[])
         }
 
         std::wcout << L"Windows playback endpoints:\n";
-        for (const auto& endpoint : endpoints) {
-            std::wcout << L"  " << endpoint.name << L" ["
+        for (std::size_t index = 0; index < endpoints.size(); ++index) {
+            const auto& endpoint = endpoints[index];
+            std::wcout << L"  " << index + 1 << L". " << endpoint.name << L" ["
                        << echopair::devices::endpoint_state_name(endpoint.state)
                        << L"]";
             if (endpoint.is_default_for_console) {
@@ -33,25 +58,34 @@ int wmain(int argc, wchar_t* argv[])
             return 0;
         }
 
-        if (argc == 2 && std::wstring(argv[1]) == L"--test-tone") {
-            const auto endpoint = std::find_if(
-                endpoints.begin(), endpoints.end(),
-                [](const auto& candidate) {
-                    return candidate.is_default_for_console &&
-                           candidate.state == echopair::devices::EndpointState::active;
-                });
-            if (endpoint == endpoints.end()) {
-                std::cerr << "No active default console playback endpoint is available.\n";
-                return 1;
+        if (std::wstring(argv[1]) == L"--test-tone" && argc <= 4) {
+            std::vector<std::wstring> selected_endpoint_ids;
+            if (argc == 2) {
+                const auto endpoint = std::find_if(
+                    endpoints.begin(), endpoints.end(),
+                    [](const auto& candidate) {
+                        return candidate.is_default_for_console &&
+                               candidate.state == echopair::devices::EndpointState::active;
+                    });
+                if (endpoint == endpoints.end()) {
+                    std::cerr << "No active default console playback endpoint is available.\n";
+                    return 1;
+                }
+                selected_endpoint_ids.push_back(endpoint->id);
+            } else {
+                for (int argument = 2; argument < argc; ++argument) {
+                    selected_endpoint_ids.push_back(endpoint_at(endpoints, argv[argument]).id);
+                }
             }
 
-            std::wcout << L"Playing a 440 Hz test tone for 3 seconds on the default endpoint.\n";
-            echopair::audio::play_test_tone_on_endpoint(
-                endpoint->id, std::chrono::seconds(3));
+            std::wcout << L"Playing the same 440 Hz test tone for 3 seconds on "
+                       << selected_endpoint_ids.size() << L" endpoint(s).\n";
+            echopair::audio::play_test_tone_on_endpoints(
+                selected_endpoint_ids, std::chrono::seconds(3));
             return 0;
         }
 
-        std::wcerr << L"Usage: EchoPair.exe [--test-tone]\n";
+        std::wcerr << L"Usage: EchoPair.exe [--test-tone [endpoint-index [endpoint-index]]]\n";
         return 2;
     } catch (const std::exception& error) {
         std::cerr << "EchoPair operation failed: " << error.what() << '\n';

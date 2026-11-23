@@ -7,11 +7,11 @@ enumerate playback endpoints. It retrieves each endpoint's Windows-provided
 identifier, friendly name, and state, and indicates the current console
 default endpoint when Windows provides one.
 
-The application can open a shared-mode WASAPI render stream to one active
-endpoint and play an explicitly requested 440 Hz test tone. It uses the
-endpoint's mix format and event-driven buffer notifications. This diagnostic
-path is not system-audio capture or multi-device routing. The code does not
-classify devices as Bluetooth based on their names.
+The application can open shared-mode WASAPI render streams to up to two
+active endpoints and play an explicitly requested 440 Hz test tone. Each
+endpoint has an independent event-driven buffer and render thread. This
+diagnostic path is not system-audio capture or a synchronized multi-device
+route. The code does not classify devices as Bluetooth based on their names.
 
 ## System-wide source routing
 

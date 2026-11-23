@@ -13,10 +13,13 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
+#include <vector>
 
 namespace echopair::audio {
 namespace {
@@ -306,6 +309,49 @@ void play_test_tone_on_endpoint(
     }
 
     stream.stop();
+}
+
+void play_test_tone_on_endpoints(
+    const std::vector<std::wstring>& endpoint_ids,
+    std::chrono::milliseconds duration)
+{
+    if (endpoint_ids.empty() || endpoint_ids.size() > 2) {
+        throw std::invalid_argument("Select one or two playback endpoints");
+    }
+    if (duration <= std::chrono::milliseconds::zero()) {
+        throw std::invalid_argument("Test-tone duration must be positive");
+    }
+
+    for (std::size_t first = 0; first < endpoint_ids.size(); ++first) {
+        if (endpoint_ids[first].empty()) {
+            throw std::invalid_argument("An audio endpoint identifier is required");
+        }
+        for (std::size_t second = first + 1; second < endpoint_ids.size(); ++second) {
+            if (endpoint_ids[first] == endpoint_ids[second]) {
+                throw std::invalid_argument("Select two different playback endpoints");
+            }
+        }
+    }
+
+    std::vector<std::exception_ptr> failures(endpoint_ids.size());
+    std::vector<std::jthread> workers;
+    workers.reserve(endpoint_ids.size());
+    for (std::size_t index = 0; index < endpoint_ids.size(); ++index) {
+        workers.emplace_back([&, index] {
+            try {
+                play_test_tone_on_endpoint(endpoint_ids[index], duration);
+            } catch (...) {
+                failures[index] = std::current_exception();
+            }
+        });
+    }
+    workers.clear();
+
+    for (const auto& failure : failures) {
+        if (failure) {
+            std::rethrow_exception(failure);
+        }
+    }
 }
 
 }

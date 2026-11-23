@@ -6,9 +6,11 @@ EchoPair is a Windows application project for routing audio to multiple
 existing playback devices without replacing Windows Bluetooth drivers.
 
 The current build enumerates actual Windows playback endpoints using Core
-Audio and can play a 440 Hz test tone on one active endpoint when requested.
-System-audio capture, multi-device routing, synchronization, and latency
-measurements are not implemented. No devices or measurements are simulated.
+Audio and can play a 440 Hz test tone on one or two active endpoints when
+requested. The test tone is not a system-audio route and has no synchronization
+guarantee. System-audio capture, production multi-device routing, synchronization,
+and latency measurements are not implemented. No devices or measurements are
+simulated.
 
 ## Build
 

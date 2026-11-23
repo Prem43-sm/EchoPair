@@ -33,5 +33,8 @@ To deliberately play a three-second test tone on the Windows default endpoint:
 .\build\Release\EchoPair.exe --test-tone
 ```
 
+For one or two active endpoints, use the displayed list indexes, for example
+`.\build\Release\EchoPair.exe --test-tone 2 5`.
+
 This command produces audible sound. It is not run by the automated build or
 test scripts.
